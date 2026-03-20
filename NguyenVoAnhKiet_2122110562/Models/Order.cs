@@ -1,0 +1,19 @@
+﻿using System.ComponentModel.DataAnnotations;
+
+namespace NguyenVoAnhKiet_2122110562.Models
+{
+    public class Order
+    {
+        [Key]
+        public int OrderId { get; set; }
+
+        [Required]
+        public int TableId { get; set; }
+
+        [Required]
+        public DateTime CreatedAt { get; set; }
+
+        [Required]
+        public string Status { get; set; } // Open / Paid
+    }
+}
