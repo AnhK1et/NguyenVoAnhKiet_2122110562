@@ -1,4 +1,5 @@
 ﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace NguyenVoAnhKiet_2122110562.Models
 {
@@ -14,6 +15,10 @@ namespace NguyenVoAnhKiet_2122110562.Models
         public DateTime CreatedAt { get; set; }
 
         [Required]
-        public string Status { get; set; } // Open / Paid
+        public string Status { get; set; } = string.Empty;
+
+        // 🔥 THÊM DÒNG NÀY
+        [ForeignKey("TableId")]
+        public Table? Table { get; set; }
     }
 }

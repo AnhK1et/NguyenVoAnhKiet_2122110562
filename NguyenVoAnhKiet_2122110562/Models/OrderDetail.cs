@@ -1,11 +1,12 @@
 ﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace NguyenVoAnhKiet_2122110562.Models
 {
     public class OrderDetail
     {
         [Key]
-        public int DetailId { get; set; } // ✅ FIX LỖI Ở ĐÂY
+        public int DetailId { get; set; }
 
         [Required]
         public int OrderId { get; set; }
@@ -15,5 +16,12 @@ namespace NguyenVoAnhKiet_2122110562.Models
 
         [Required]
         public int Quantity { get; set; }
+
+        // 🔥 THÊM 2 DÒNG NÀY
+        [ForeignKey("OrderId")]
+        public Order? Order { get; set; }
+
+        [ForeignKey("ProductId")]
+        public Product? Product { get; set; }
     }
 }
