@@ -6,11 +6,9 @@ namespace NguyenVoAnhKiet_2122110562.Models
     {
         [Key]
         public int TableId { get; set; }
+        public string TableName { get; set; } = string.Empty;
+        public string Status { get; set; } = "Trống";
 
-        [Required]
-        public string TableName { get; set; }
-
-        [Required]
-        public string Status { get; set; } // Empty / Occupied
+        public ICollection<Order> Orders { get; set; } = new List<Order>();
     }
 }

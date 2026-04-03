@@ -9,17 +9,16 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 
 // Add services
 builder.Services.AddControllers();
+
+// Swagger (API test)
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
 
-// Middleware
-if (app.Environment.IsDevelopment())
-{
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
+// 🔥 Luôn bật Swagger (không chỉ Development)
+app.UseSwagger();
+app.UseSwaggerUI();
 
 app.UseHttpsRedirection();
 

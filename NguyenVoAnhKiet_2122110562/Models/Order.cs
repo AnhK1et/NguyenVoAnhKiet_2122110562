@@ -1,5 +1,4 @@
 ﻿using System.ComponentModel.DataAnnotations;
-using System.ComponentModel.DataAnnotations.Schema;
 
 namespace NguyenVoAnhKiet_2122110562.Models
 {
@@ -8,17 +7,13 @@ namespace NguyenVoAnhKiet_2122110562.Models
         [Key]
         public int OrderId { get; set; }
 
-        [Required]
         public int TableId { get; set; }
-
-        [Required]
-        public DateTime CreatedAt { get; set; }
-
-        [Required]
-        public string Status { get; set; } = string.Empty;
-
-        // 🔥 THÊM DÒNG NÀY
-        [ForeignKey("TableId")]
         public Table? Table { get; set; }
+
+        public DateTime CreatedAt { get; set; } = DateTime.Now;
+        public string Status { get; set; } = "Pending";
+
+        public ICollection<OrderDetail> OrderDetails { get; set; } = new List<OrderDetail>();
+        public Bill? Bill { get; set; }
     }
 }

@@ -16,23 +16,32 @@ namespace NguyenVoAnhKiet_2122110562.Controllers
             _context = context;
         }
 
-        // GET: api/Product
+        // GET ALL (có category)
         [HttpGet]
         public async Task<IActionResult> GetAll()
         {
-            return Ok(await _context.Products.ToListAsync());
+            var data = await _context.Products
+                .Include(p => p.Category)
+                .ToListAsync();
+
+            return Ok(data);
         }
 
-        // GET: api/Product/5
+        // GET BY ID
         [HttpGet("{id}")]
         public async Task<IActionResult> GetById(int id)
         {
-            var product = await _context.Products.FindAsync(id);
-            if (product == null) return NotFound();
+            var product = await _context.Products
+                .Include(p => p.Category)
+                .FirstOrDefaultAsync(p => p.ProductId == id);
+
+            if (product == null)
+                return NotFound();
+
             return Ok(product);
         }
 
-        // POST: api/Product
+        // CREATE
         [HttpPost]
         public async Task<IActionResult> Create(Product product)
         {
@@ -41,24 +50,33 @@ namespace NguyenVoAnhKiet_2122110562.Controllers
             return Ok(product);
         }
 
-        // PUT: api/Product/5
+        // UPDATE
         [HttpPut("{id}")]
         public async Task<IActionResult> Update(int id, Product product)
         {
-            if (id != product.ProductId) return BadRequest();
+            if (id != product.ProductId)
+                return BadRequest();
 
-            _context.Entry(product).State = EntityState.Modified;
+            var existing = await _context.Products.FindAsync(id);
+            if (existing == null)
+                return NotFound();
+
+            existing.Name = product.Name;
+            existing.Price = product.Price;
+            existing.CategoryId = product.CategoryId;
+
             await _context.SaveChangesAsync();
 
-            return Ok(product);
+            return Ok(existing);
         }
 
-        // DELETE: api/Product/5
+        // DELETE
         [HttpDelete("{id}")]
         public async Task<IActionResult> Delete(int id)
         {
             var product = await _context.Products.FindAsync(id);
-            if (product == null) return NotFound();
+            if (product == null)
+                return NotFound();
 
             _context.Products.Remove(product);
             await _context.SaveChangesAsync();

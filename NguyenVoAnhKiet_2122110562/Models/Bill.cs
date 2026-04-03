@@ -7,15 +7,11 @@ namespace NguyenVoAnhKiet_2122110562.Models
         [Key]
         public int BillId { get; set; }
 
-        [Required]
         public int OrderId { get; set; }
+        public Order? Order { get; set; }
 
-        [Required]
         public decimal TotalAmount { get; set; }
-
         public decimal Discount { get; set; }
-
-        [Required]
-        public DateTime PaymentDate { get; set; }
+        public DateTime PaymentDate { get; set; } = DateTime.Now;
     }
 }
