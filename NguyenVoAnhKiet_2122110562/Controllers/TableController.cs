@@ -16,32 +16,63 @@ namespace NguyenVoAnhKiet_2122110562.Controllers
             _context = context;
         }
 
-        // 🔥 Lấy danh sách bàn
         [HttpGet]
-        public async Task<IActionResult> GetAll()
+        public async Task<ActionResult<IEnumerable<Table>>> GetTables()
         {
-            return Ok(await _context.Tables.ToListAsync());
+            return await _context.Tables.ToListAsync();
         }
 
-        // 🔥 Thêm bàn
+        [HttpGet("{id}")]
+        public async Task<ActionResult<Table>> GetTable(int id)
+        {
+            var table = await _context.Tables.FindAsync(id);
+            if (table == null) return NotFound();
+            return table;
+        }
+
+        [HttpPut("{id}")]
+        public async Task<IActionResult> PutTable(int id, Table table)
+        {
+            if (id != table.TableId) return BadRequest();
+
+            _context.Entry(table).State = EntityState.Modified;
+
+            try
+            {
+                await _context.SaveChangesAsync();
+            }
+            catch (DbUpdateConcurrencyException)
+            {
+                if (!TableExists(id)) return NotFound();
+                else throw;
+            }
+
+            return NoContent();
+        }
+
         [HttpPost]
-        public async Task<IActionResult> Create(Table table)
+        public async Task<ActionResult<Table>> PostTable(Table table)
         {
             _context.Tables.Add(table);
             await _context.SaveChangesAsync();
-            return Ok(table);
+            return CreatedAtAction("GetTable", new { id = table.TableId }, table);
         }
 
-        // 🔥 Xóa bàn
         [HttpDelete("{id}")]
-        public async Task<IActionResult> Delete(int id)
+        public async Task<IActionResult> DeleteTable(int id)
         {
             var table = await _context.Tables.FindAsync(id);
             if (table == null) return NotFound();
 
             _context.Tables.Remove(table);
             await _context.SaveChangesAsync();
-            return Ok();
+            return NoContent();
+        }
+
+        private bool TableExists(int id)
+        {
+            // Sửa lỗi dấu == tại đây
+            return _context.Tables.Any(e => e.TableId == id);
         }
     }
 }

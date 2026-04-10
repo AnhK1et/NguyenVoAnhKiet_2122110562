@@ -7,8 +7,11 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-// Add services
-builder.Services.AddControllers();
+// ✅ Sửa lỗi AddControllers để hiển thị được dữ liệu (Xử lý Object Cycle)
+builder.Services.AddControllers().AddJsonOptions(options =>
+{
+    options.JsonSerializerOptions.ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles;
+});
 
 // Swagger (API test)
 builder.Services.AddEndpointsApiExplorer();
