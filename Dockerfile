@@ -2,18 +2,17 @@
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /source
 
-# Copy file dự án và khôi phục thư viện
-COPY *.csproj .
-RUN dotnet restore
+# Copy file dự án từ thư mục con và restore
+COPY NguyenVoAnhKiet_2122110562/*.csproj ./NguyenVoAnhKiet_2122110562/
+RUN dotnet restore ./NguyenVoAnhKiet_2122110562/NguyenVoAnhKiet_2122110562.csproj
 
-# Copy toàn bộ code còn lại và xuất bản (Publish)
+# Copy toàn bộ và build
 COPY . .
+WORKDIR /source/NguyenVoAnhKiet_2122110562
 RUN dotnet publish -c Release -o /app
 
-# Giai đoạn Chạy (Runtime)
+# Giai đoạn Runtime
 FROM mcr.microsoft.com/dotnet/aspnet:8.0
 WORKDIR /app
 COPY --from=build /app .
-
-# Lệnh khởi chạy chính xác với tên file của bạn
 ENTRYPOINT ["dotnet", "NguyenVoAnhKiet_2122110562.dll"]
