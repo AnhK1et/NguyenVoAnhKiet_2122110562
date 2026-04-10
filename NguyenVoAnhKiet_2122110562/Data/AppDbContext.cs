@@ -5,7 +5,12 @@ namespace NguyenVoAnhKiet_2122110562.Data
 {
     public class AppDbContext : DbContext
     {
-        public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
+        public AppDbContext(DbContextOptions<AppDbContext> options) : base(options)
+        {
+            // ✅ QUAN TRỌNG: Tự động tạo bảng trên Supabase khi Web chạy trên Render
+            // Bạn không cần chạy lệnh Update-Database ở máy cá nhân nữa.
+            this.Database.EnsureCreated();
+        }
 
         public DbSet<Table> Tables { get; set; }
         public DbSet<Product> Products { get; set; }
@@ -19,15 +24,16 @@ namespace NguyenVoAnhKiet_2122110562.Data
         {
             base.OnModelCreating(modelBuilder);
 
-            // --- FIX LỖI CẢNH BÁO VÀNG TẠI ĐÂY ---
+            // --- FIX LỖI CẢNH BÁO VÀNG ---
             modelBuilder.Entity<Product>().Property(p => p.Price).HasPrecision(18, 2);
             modelBuilder.Entity<Bill>().Property(b => b.TotalAmount).HasPrecision(18, 2);
-            modelBuilder.Entity<Bill>().Property(b => b.Discount).HasPrecision(18, 2); // Thêm dòng này để hết báo vàng
+            modelBuilder.Entity<Bill>().Property(b => b.Discount).HasPrecision(18, 2);
 
             modelBuilder.Entity<User>().HasIndex(u => u.Username).IsUnique();
             modelBuilder.Entity<OrderDetail>().HasKey(od => od.DetailId);
 
             // --- SEED DATA NOM COFFEE ---
+            // Lưu ý: Chỉ nên để Seed Data ở đây nếu Database trống
             modelBuilder.Entity<Category>().HasData(new Category { CategoryId = 1, Name = "Coffee" });
 
             modelBuilder.Entity<Product>().HasData(
