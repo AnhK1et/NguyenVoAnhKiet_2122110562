@@ -1,0 +1,714 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Nom Coffee Manager</title>
+  <style>
+    :root {
+      --bg: #f7f3ee;
+      --panel: #ffffff;
+      --line: #e9ddcf;
+      --text: #2f241d;
+      --muted: #7b6759;
+      --brand: #6f4e37;
+      --brand-2: #a67c52;
+      --ok: #2e7d32;
+      --warn: #c62828;
+      --soft: #f2e8dc;
+      --shadow: 0 10px 30px rgba(62, 39, 22, 0.08);
+      --radius: 18px;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Inter, Arial, sans-serif;
+      background: linear-gradient(180deg, #f8f4ef 0%, #f2ebe1 100%);
+      color: var(--text);
+    }
+    .wrap {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 24px;
+    }
+    .hero {
+      display: grid;
+      grid-template-columns: 1.2fr 1fr;
+      gap: 18px;
+      margin-bottom: 20px;
+    }
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+    }
+    .hero-main {
+      padding: 26px;
+      background: linear-gradient(135deg, #6f4e37 0%, #8a6144 100%);
+      color: #fff;
+    }
+    .hero h1 { margin: 0 0 8px; font-size: 34px; }
+    .hero p { margin: 0; opacity: 0.92; line-height: 1.6; }
+    .hero-side { padding: 20px; }
+    .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-top: 16px; }
+    .stat { padding: 16px; background: var(--soft); border-radius: 14px; }
+    .stat .label { font-size: 13px; color: var(--muted); }
+    .stat .value { margin-top: 6px; font-size: 28px; font-weight: 700; }
+    .toolbar, .section-head {
+      display: flex; align-items: center; justify-content: space-between; gap: 12px;
+      flex-wrap: wrap;
+    }
+    .toolbar { margin-bottom: 18px; }
+    .section-head { padding: 18px 18px 0; }
+    .tabs {
+      display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 16px;
+    }
+    .tab {
+      border: 1px solid var(--line); background: #fff; color: var(--text);
+      padding: 10px 14px; border-radius: 999px; cursor: pointer; font-weight: 600;
+    }
+    .tab.active { background: var(--brand); color: #fff; border-color: var(--brand); }
+    .layout { display: grid; grid-template-columns: 1.1fr 0.9fr; gap: 18px; }
+    .section-body { padding: 18px; }
+    .table-wrap { overflow: auto; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { padding: 12px 10px; border-bottom: 1px solid #f0e8df; text-align: left; vertical-align: top; }
+    th { color: var(--muted); font-size: 13px; font-weight: 700; }
+    tr:hover td { background: #fcfaf7; }
+    input, select, textarea {
+      width: 100%; padding: 11px 12px; border-radius: 12px; border: 1px solid #dbcab8;
+      background: #fff; color: var(--text); font-size: 14px;
+    }
+    textarea { min-height: 120px; resize: vertical; }
+    .form-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+    .form-grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+    .field { display: flex; flex-direction: column; gap: 7px; }
+    .field label { font-size: 13px; color: var(--muted); font-weight: 700; }
+    .actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 14px; }
+    button {
+      border: 0; border-radius: 12px; padding: 11px 15px; cursor: pointer; font-weight: 700;
+    }
+    .btn-main { background: var(--brand); color: #fff; }
+    .btn-sub { background: #efe3d5; color: var(--text); }
+    .btn-danger { background: #fce7e7; color: var(--warn); }
+    .btn-ok { background: #e7f4e8; color: var(--ok); }
+    .badge {
+      display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px;
+      border-radius: 999px; background: #f5ede4; color: var(--brand); font-size: 12px; font-weight: 700;
+    }
+    .muted { color: var(--muted); }
+    .notice { padding: 12px 14px; border-radius: 12px; margin-top: 12px; font-size: 14px; }
+    .notice.ok { background: #eaf7eb; color: #1f6b24; }
+    .notice.err { background: #feebeb; color: #a51f1f; }
+    .login-box { display: grid; gap: 12px; }
+    .kpi { display:flex; justify-content:space-between; gap:12px; background:#fcfaf7; border:1px solid #eee3d6; border-radius:14px; padding:12px 14px; }
+    .pill { background:#f1e7da; color:#6f4e37; border-radius:999px; padding:4px 10px; font-size:12px; font-weight:700; }
+    .footer-note { margin-top: 16px; color: var(--muted); font-size: 13px; line-height: 1.6; }
+    @media (max-width: 1100px) {
+      .hero, .layout { grid-template-columns: 1fr; }
+      .grid-4, .form-grid, .form-grid-3 { grid-template-columns: 1fr 1fr; }
+    }
+    @media (max-width: 720px) {
+      .grid-4, .form-grid, .form-grid-3 { grid-template-columns: 1fr; }
+      .wrap { padding: 14px; }
+      .hero h1 { font-size: 28px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="hero">
+      <div class="card hero-main">
+        <div class="badge">☕ Nom Coffee Management</div>
+        <h1>Trang quản lý bán cà phê</h1>
+        <p>Giao diện này bám theo đúng API trong project ASP.NET của bạn: <b>Category</b>, <b>Product</b>, <b>Table</b>, <b>Order</b>, <b>OrderDetail</b>, <b>Bill</b>, <b>Auth</b>. Chỉ cần nhập đúng Base URL là có thể quản lý dữ liệu.</p>
+        <div class="grid-4">
+          <div class="stat"><div class="label">Sản phẩm</div><div class="value" id="statProducts">0</div></div>
+          <div class="stat"><div class="label">Danh mục</div><div class="value" id="statCategories">0</div></div>
+          <div class="stat"><div class="label">Bàn</div><div class="value" id="statTables">0</div></div>
+          <div class="stat"><div class="label">Đơn hàng</div><div class="value" id="statOrders">0</div></div>
+        </div>
+      </div>
+      <div class="card hero-side">
+        <div class="field">
+          <label>Base API URL</label>
+          <input id="baseUrl" value="https://localhost:5001/api" />
+        </div>
+        <div class="actions">
+          <button class="btn-main" onclick="loadDashboard()">Kết nối API</button>
+          <button class="btn-sub" onclick="detectRenderHint()">Gợi ý URL</button>
+        </div>
+        <div class="footer-note">
+          Ví dụ URL đúng:<br>
+          <b>Local:</b> https://localhost:5001/api<br>
+          <b>Render:</b> https://ten-app.onrender.com/api<br><br>
+          Swagger của backend thường nằm ở <b>/swagger</b>, không phải <b>/api</b>.
+        </div>
+      </div>
+    </div>
+
+    <div class="toolbar">
+      <div class="tabs" id="tabs"></div>
+      <div class="pill" id="sessionInfo">Chưa đăng nhập</div>
+    </div>
+
+    <div class="layout">
+      <div class="card">
+        <div class="section-head">
+          <div>
+            <h2 id="listTitle" style="margin:0;">Danh sách</h2>
+            <div class="muted" id="listSubtitle">Dữ liệu lấy từ API của bạn</div>
+          </div>
+          <button class="btn-sub" onclick="refreshActive()">Tải lại</button>
+        </div>
+        <div class="section-body">
+          <div class="table-wrap" id="listArea"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="section-head">
+          <div>
+            <h2 id="formTitle" style="margin:0;">Biểu mẫu</h2>
+            <div class="muted" id="formSubtitle">Thêm mới, cập nhật, tạo hóa đơn</div>
+          </div>
+        </div>
+        <div class="section-body" id="formArea"></div>
+      </div>
+    </div>
+
+    <div id="notice"></div>
+  </div>
+
+  <script>
+    const state = {
+      activeTab: 'dashboard',
+      token: localStorage.getItem('coffee_token') || '',
+      user: JSON.parse(localStorage.getItem('coffee_user') || 'null'),
+      data: { categories: [], products: [], tables: [], orders: [], bills: [] },
+      selectedOrderId: null
+    };
+
+    const tabDefs = [
+      { id: 'dashboard', label: 'Tổng quan' },
+      { id: 'auth', label: 'Đăng nhập' },
+      { id: 'categories', label: 'Danh mục' },
+      { id: 'products', label: 'Sản phẩm' },
+      { id: 'tables', label: 'Bàn' },
+      { id: 'orders', label: 'Đơn hàng' },
+      { id: 'orderDetails', label: 'Chi tiết đơn' },
+      { id: 'bills', label: 'Hóa đơn' }
+    ];
+
+    function baseApi() {
+      return document.getElementById('baseUrl').value.replace(/\/+$/, '');
+    }
+
+    function showNotice(msg, ok = true) {
+      document.getElementById('notice').innerHTML = `<div class="notice ${ok ? 'ok' : 'err'}">${msg}</div>`;
+    }
+
+    function authHeaders(extra = {}) {
+      const headers = { 'Content-Type': 'application/json', ...extra };
+      if (state.token) headers['Authorization'] = `Bearer ${state.token}`;
+      return headers;
+    }
+
+    async function apiFetch(path, options = {}) {
+      const res = await fetch(`${baseApi()}${path}`, {
+        ...options,
+        headers: authHeaders(options.headers || {})
+      });
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(`${res.status} ${res.statusText}: ${text}`);
+      }
+      const contentType = res.headers.get('content-type') || '';
+      return contentType.includes('application/json') ? res.json() : res.text();
+    }
+
+    async function loadDashboard() {
+      try {
+        const [categories, products, tables, orders, bills] = await Promise.all([
+          apiFetch('/Category'),
+          apiFetch('/Product'),
+          apiFetch('/Table'),
+          apiFetch('/Order'),
+          apiFetch('/Bill').catch(() => [])
+        ]);
+        state.data = { categories, products, tables, orders, bills };
+        updateStats();
+        renderActive();
+        showNotice('Kết nối API thành công. Dữ liệu đã được tải từ backend của bạn.');
+      } catch (err) {
+        showNotice(`Không tải được dữ liệu: ${err.message}`, false);
+      }
+    }
+
+    function updateStats() {
+      document.getElementById('statProducts').textContent = state.data.products.length;
+      document.getElementById('statCategories').textContent = state.data.categories.length;
+      document.getElementById('statTables').textContent = state.data.tables.length;
+      document.getElementById('statOrders').textContent = state.data.orders.length;
+      const info = state.user ? `${state.user.username} • ${state.user.role}` : 'Chưa đăng nhập';
+      document.getElementById('sessionInfo').textContent = info;
+    }
+
+    function formatMoney(v) {
+      return Number(v || 0).toLocaleString('vi-VN') + ' đ';
+    }
+
+    function detectRenderHint() {
+      showNotice('Nếu backend deploy trên Render, hãy dùng dạng URL: https://ten-app.onrender.com/api . Nếu chạy local, dùng https://localhost:xxxx/api');
+    }
+
+    function renderTabs() {
+      document.getElementById('tabs').innerHTML = tabDefs.map(t =>
+        `<button class="tab ${state.activeTab === t.id ? 'active' : ''}" onclick="switchTab('${t.id}')">${t.label}</button>`
+      ).join('');
+    }
+
+    function switchTab(id) {
+      state.activeTab = id;
+      renderTabs();
+      renderActive();
+    }
+
+    function refreshActive() {
+      if (state.activeTab === 'dashboard') return loadDashboard();
+      renderActive();
+    }
+
+    function renderActive() {
+      const listArea = document.getElementById('listArea');
+      const formArea = document.getElementById('formArea');
+      if (state.activeTab === 'dashboard') {
+        document.getElementById('listTitle').textContent = 'Tổng quan bán hàng';
+        document.getElementById('formTitle').textContent = 'Thao tác nhanh';
+        listArea.innerHTML = renderDashboardList();
+        formArea.innerHTML = renderQuickActions();
+      }
+      if (state.activeTab === 'auth') {
+        document.getElementById('listTitle').textContent = 'Thông tin đăng nhập';
+        document.getElementById('formTitle').textContent = 'Đăng nhập / đăng ký';
+        listArea.innerHTML = renderAuthInfo();
+        formArea.innerHTML = renderAuthForm();
+      }
+      if (state.activeTab === 'categories') {
+        document.getElementById('listTitle').textContent = 'Danh mục';
+        document.getElementById('formTitle').textContent = 'Thêm danh mục';
+        listArea.innerHTML = tableCategories();
+        formArea.innerHTML = formCategory();
+      }
+      if (state.activeTab === 'products') {
+        document.getElementById('listTitle').textContent = 'Sản phẩm';
+        document.getElementById('formTitle').textContent = 'Thêm / cập nhật sản phẩm';
+        listArea.innerHTML = tableProducts();
+        formArea.innerHTML = formProduct();
+      }
+      if (state.activeTab === 'tables') {
+        document.getElementById('listTitle').textContent = 'Bàn';
+        document.getElementById('formTitle').textContent = 'Quản lý bàn';
+        listArea.innerHTML = tableTables();
+        formArea.innerHTML = formTable();
+      }
+      if (state.activeTab === 'orders') {
+        document.getElementById('listTitle').textContent = 'Đơn hàng';
+        document.getElementById('formTitle').textContent = 'Tạo đơn mới';
+        listArea.innerHTML = tableOrders();
+        formArea.innerHTML = formOrder();
+      }
+      if (state.activeTab === 'orderDetails') {
+        document.getElementById('listTitle').textContent = 'Chi tiết đơn hàng';
+        document.getElementById('formTitle').textContent = 'Thêm món vào đơn';
+        listArea.innerHTML = renderOrderDetailsPanel();
+        formArea.innerHTML = formOrderDetail();
+      }
+      if (state.activeTab === 'bills') {
+        document.getElementById('listTitle').textContent = 'Hóa đơn';
+        document.getElementById('formTitle').textContent = 'Tạo hóa đơn';
+        listArea.innerHTML = tableBills();
+        formArea.innerHTML = formBill();
+      }
+      bindInputs();
+    }
+
+    function renderDashboardList() {
+      const pending = state.data.orders.filter(x => (x.status || '').toLowerCase() === 'pending').length;
+      const revenue = state.data.bills.reduce((sum, x) => sum + Number(x.totalAmount || 0), 0);
+      return `
+        <div class="kpi"><div><b>Đơn đang chờ</b><div class="muted">Trạng thái Pending</div></div><div><b>${pending}</b></div></div>
+        <div class="kpi" style="margin-top:12px;"><div><b>Tổng doanh thu</b><div class="muted">Từ bảng Bill</div></div><div><b>${formatMoney(revenue)}</b></div></div>
+        <div class="kpi" style="margin-top:12px;"><div><b>Sản phẩm nổi bật</b><div class="muted">Top menu hiện có</div></div><div><b>${state.data.products.slice(0,3).map(x=>x.name).join(', ') || 'Chưa có'}</b></div></div>
+        <div class="footer-note">Backend của bạn hiện có CRUD đầy đủ nhất ở Product và Table. Category, OrderDetail, Bill đang có ít endpoint hơn, nên giao diện này bám đúng khả năng hiện tại của API.</div>
+      `;
+    }
+
+    function renderQuickActions() {
+      return `
+        <div class="actions">
+          <button class="btn-main" onclick="switchTab('products')">Quản lý sản phẩm</button>
+          <button class="btn-sub" onclick="switchTab('orders')">Tạo đơn hàng</button>
+          <button class="btn-sub" onclick="switchTab('orderDetails')">Thêm món vào đơn</button>
+          <button class="btn-ok" onclick="switchTab('bills')">Lập hóa đơn</button>
+        </div>
+        <div class="footer-note">Trình tự bán hàng đề xuất: <b>Tạo Order</b> → <b>Thêm OrderDetail</b> → <b>Tạo Bill</b>.</div>
+      `;
+    }
+
+    function renderAuthInfo() {
+      return `
+        <div class="login-box">
+          <div class="kpi"><div><b>Trạng thái</b><div class="muted">Phiên hiện tại</div></div><div>${state.user ? state.user.username : 'Chưa đăng nhập'}</div></div>
+          <div class="kpi"><div><b>Vai trò</b><div class="muted">Lấy từ API login</div></div><div>${state.user ? state.user.role : '-'}</div></div>
+          <div class="actions">
+            <button class="btn-danger" onclick="logout()">Đăng xuất</button>
+          </div>
+          <div class="footer-note">Lưu ý: backend của bạn có tạo JWT nhưng hiện chưa cấu hình middleware xác thực trong Program.cs, nên nhiều endpoint vẫn đang truy cập công khai.</div>
+        </div>
+      `;
+    }
+
+    function renderAuthForm() {
+      return `
+        <div class="form-grid">
+          <div class="field"><label>Username</label><input id="loginUsername" placeholder="admin" /></div>
+          <div class="field"><label>Password</label><input id="loginPassword" type="password" placeholder="123456" /></div>
+        </div>
+        <div class="form-grid">
+          <div class="field"><label>Role khi đăng ký</label>
+            <select id="registerRole"><option>Admin</option><option selected>Staff</option></select>
+          </div>
+          <div class="field"><label>Gợi ý</label><input disabled value="API: /api/Auth/login, /api/Auth/register" /></div>
+        </div>
+        <div class="actions">
+          <button class="btn-main" onclick="login()">Đăng nhập</button>
+          <button class="btn-sub" onclick="registerUser()">Đăng ký</button>
+        </div>
+      `;
+    }
+
+    function tableCategories() {
+      return renderTable([
+        'ID', 'Tên danh mục'
+      ], state.data.categories.map(x => [x.categoryId, x.name]));
+    }
+
+    function formCategory() {
+      return `
+        <div class="field"><label>Tên danh mục</label><input id="categoryName" placeholder="Coffee" /></div>
+        <div class="actions"><button class="btn-main" onclick="createCategory()">Thêm danh mục</button></div>
+      `;
+    }
+
+    function tableProducts() {
+      return `
+        ${renderTable(['ID','Tên','Giá','Danh mục','Thao tác'], state.data.products.map(x => [
+          x.productId,
+          x.name,
+          formatMoney(x.price),
+          x.category?.name || x.categoryId,
+          `<div class='actions'><button class='btn-sub' onclick='fillProduct(${JSON.stringify(escapeObj(x)).replace(/'/g,"&#39;")})'>Sửa</button><button class='btn-danger' onclick='deleteProduct(${x.productId})'>Xóa</button></div>`
+        ]), true)}
+      `;
+    }
+
+    function formProduct() {
+      return `
+        <input type="hidden" id="productId" />
+        <div class="form-grid">
+          <div class="field"><label>Tên sản phẩm</label><input id="productName" placeholder="Latte" /></div>
+          <div class="field"><label>Giá</label><input id="productPrice" type="number" placeholder="38000" /></div>
+        </div>
+        <div class="field"><label>Danh mục</label>
+          <select id="productCategoryId">
+            ${state.data.categories.map(c => `<option value="${c.categoryId}">${c.name}</option>`).join('')}
+          </select>
+        </div>
+        <div class="actions">
+          <button class="btn-main" onclick="saveProduct()">Lưu sản phẩm</button>
+          <button class="btn-sub" onclick="clearProductForm()">Xóa form</button>
+        </div>
+      `;
+    }
+
+    function tableTables() {
+      return renderTable(['ID','Tên bàn','Trạng thái','Thao tác'], state.data.tables.map(x => [
+        x.tableId,
+        x.name,
+        x.status,
+        `<div class='actions'><button class='btn-sub' onclick='fillTable(${JSON.stringify(escapeObj(x)).replace(/'/g,"&#39;")})'>Sửa</button><button class='btn-danger' onclick='deleteTable(${x.tableId})'>Xóa</button></div>`
+      ]), true);
+    }
+
+    function formTable() {
+      return `
+        <input type="hidden" id="tableId" />
+        <div class="form-grid">
+          <div class="field"><label>Tên bàn</label><input id="tableName" placeholder="Bàn 03" /></div>
+          <div class="field"><label>Trạng thái</label>
+            <select id="tableStatus">
+              <option value="Available">Available</option>
+              <option value="Occupied">Occupied</option>
+              <option value="Reserved">Reserved</option>
+              <option value="Trống">Trống</option>
+            </select>
+          </div>
+        </div>
+        <div class="actions">
+          <button class="btn-main" onclick="saveTable()">Lưu bàn</button>
+          <button class="btn-sub" onclick="clearTableForm()">Xóa form</button>
+        </div>
+      `;
+    }
+
+    function tableOrders() {
+      return renderTable(['ID','Bàn','Thời gian','Trạng thái','Thao tác'], state.data.orders.map(x => [
+        x.orderId,
+        x.table?.name || x.tableId,
+        new Date(x.createdAt).toLocaleString('vi-VN'),
+        x.status,
+        `<div class='actions'><button class='btn-sub' onclick='pickOrder(${x.orderId})'>Chọn đơn</button><button class='btn-danger' onclick='deleteOrder(${x.orderId})'>Xóa</button></div>`
+      ]), true);
+    }
+
+    function formOrder() {
+      return `
+        <div class="form-grid">
+          <div class="field"><label>Bàn</label>
+            <select id="orderTableId">${state.data.tables.map(t => `<option value="${t.tableId}">${t.name}</option>`).join('')}</select>
+          </div>
+          <div class="field"><label>Trạng thái</label>
+            <select id="orderStatus"><option>Pending</option><option>Paid</option><option>Done</option></select>
+          </div>
+        </div>
+        <div class="actions"><button class="btn-main" onclick="createOrder()">Tạo đơn hàng</button></div>
+        <div class="footer-note">Sau khi tạo đơn, sang tab <b>Chi tiết đơn</b> để thêm món.</div>
+      `;
+    }
+
+    function renderOrderDetailsPanel() {
+      return `
+        <div class="field"><label>Đơn đang chọn</label><input disabled value="${state.selectedOrderId || 'Chưa chọn'}" /></div>
+        <div class="actions"><button class="btn-sub" onclick="loadOrderDetails()">Tải chi tiết đơn</button></div>
+        <div id="orderDetailsList" class="footer-note">Chọn một Order từ tab Đơn hàng trước.</div>
+      `;
+    }
+
+    function formOrderDetail() {
+      return `
+        <div class="form-grid-3">
+          <div class="field"><label>Order ID</label><input id="detailOrderId" value="${state.selectedOrderId || ''}" /></div>
+          <div class="field"><label>Sản phẩm</label>
+            <select id="detailProductId">${state.data.products.map(p => `<option value="${p.productId}">${p.name}</option>`).join('')}</select>
+          </div>
+          <div class="field"><label>Số lượng</label><input id="detailQuantity" type="number" value="1" min="1" /></div>
+        </div>
+        <div class="actions"><button class="btn-main" onclick="createOrderDetail()">Thêm món vào đơn</button></div>
+      `;
+    }
+
+    function tableBills() {
+      return renderTable(['Bill ID','Order ID','Tổng tiền','Giảm giá','Ngày thanh toán'], state.data.bills.map(x => [
+        x.billId,
+        x.orderId,
+        formatMoney(x.totalAmount),
+        formatMoney(x.discount),
+        x.paymentDate ? new Date(x.paymentDate).toLocaleString('vi-VN') : ''
+      ]));
+    }
+
+    function formBill() {
+      return `
+        <div class="form-grid-3">
+          <div class="field"><label>Order ID</label><input id="billOrderId" value="${state.selectedOrderId || ''}" /></div>
+          <div class="field"><label>Tổng tiền</label><input id="billTotalAmount" type="number" placeholder="100000" /></div>
+          <div class="field"><label>Giảm giá</label><input id="billDiscount" type="number" value="0" /></div>
+        </div>
+        <div class="actions"><button class="btn-ok" onclick="createBill()">Tạo hóa đơn</button></div>
+      `;
+    }
+
+    function renderTable(headers, rows, raw = false) {
+      return `
+        <table>
+          <thead><tr>${headers.map(h => `<th>${h}</th>`).join('')}</tr></thead>
+          <tbody>
+            ${rows.length ? rows.map(r => `<tr>${r.map(c => `<td>${raw ? c : escapeHtml(String(c ?? ''))}</td>`).join('')}</tr>`).join('') : `<tr><td colspan="${headers.length}" class="muted">Chưa có dữ liệu</td></tr>`}
+          </tbody>
+        </table>
+      `;
+    }
+
+    function escapeHtml(s) {
+      return s.replace(/[&<>"']/g, m => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[m]));
+    }
+
+    function escapeObj(obj) {
+      return JSON.parse(JSON.stringify(obj));
+    }
+
+    function bindInputs() {}
+
+    function fillProduct(p) {
+      document.getElementById('productId').value = p.productId || '';
+      document.getElementById('productName').value = p.name || '';
+      document.getElementById('productPrice').value = p.price || 0;
+      document.getElementById('productCategoryId').value = p.categoryId || '';
+    }
+
+    function clearProductForm() {
+      document.getElementById('productId').value = '';
+      document.getElementById('productName').value = '';
+      document.getElementById('productPrice').value = '';
+    }
+
+    async function saveProduct() {
+      const id = document.getElementById('productId').value;
+      const payload = {
+        productId: Number(id || 0),
+        name: document.getElementById('productName').value,
+        price: Number(document.getElementById('productPrice').value),
+        categoryId: Number(document.getElementById('productCategoryId').value)
+      };
+      try {
+        if (id) await apiFetch(`/Product/${id}`, { method: 'PUT', body: JSON.stringify(payload) });
+        else await apiFetch('/Product', { method: 'POST', body: JSON.stringify(payload) });
+        await loadDashboard();
+        clearProductForm();
+        switchTab('products');
+      } catch (err) { showNotice(err.message, false); }
+    }
+
+    async function deleteProduct(id) {
+      try { await apiFetch(`/Product/${id}`, { method: 'DELETE' }); await loadDashboard(); switchTab('products'); }
+      catch (err) { showNotice(err.message, false); }
+    }
+
+    async function createCategory() {
+      try {
+        await apiFetch('/Category', { method: 'POST', body: JSON.stringify({ name: document.getElementById('categoryName').value }) });
+        await loadDashboard(); switchTab('categories'); document.getElementById('categoryName').value = '';
+      } catch (err) { showNotice(err.message, false); }
+    }
+
+    function fillTable(t) {
+      document.getElementById('tableId').value = t.tableId || '';
+      document.getElementById('tableName').value = t.name || '';
+      document.getElementById('tableStatus').value = t.status || 'Available';
+    }
+
+    function clearTableForm() {
+      document.getElementById('tableId').value = '';
+      document.getElementById('tableName').value = '';
+      document.getElementById('tableStatus').value = 'Available';
+    }
+
+    async function saveTable() {
+      const id = document.getElementById('tableId').value;
+      const payload = { tableId: Number(id || 0), name: document.getElementById('tableName').value, status: document.getElementById('tableStatus').value };
+      try {
+        if (id) await apiFetch(`/Table/${id}`, { method: 'PUT', body: JSON.stringify(payload) });
+        else await apiFetch('/Table', { method: 'POST', body: JSON.stringify(payload) });
+        await loadDashboard(); clearTableForm(); switchTab('tables');
+      } catch (err) { showNotice(err.message, false); }
+    }
+
+    async function deleteTable(id) {
+      try { await apiFetch(`/Table/${id}`, { method: 'DELETE' }); await loadDashboard(); switchTab('tables'); }
+      catch (err) { showNotice(err.message, false); }
+    }
+
+    async function createOrder() {
+      try {
+        const payload = { tableId: Number(document.getElementById('orderTableId').value), status: document.getElementById('orderStatus').value };
+        await apiFetch('/Order', { method: 'POST', body: JSON.stringify(payload) });
+        await loadDashboard(); switchTab('orders');
+      } catch (err) { showNotice(err.message, false); }
+    }
+
+    async function deleteOrder(id) {
+      try { await apiFetch(`/Order/${id}`, { method: 'DELETE' }); await loadDashboard(); switchTab('orders'); }
+      catch (err) { showNotice(err.message, false); }
+    }
+
+    function pickOrder(id) {
+      state.selectedOrderId = id;
+      showNotice(`Đã chọn Order #${id}. Bây giờ bạn có thể sang tab Chi tiết đơn hoặc Hóa đơn.`);
+      renderActive();
+    }
+
+    async function loadOrderDetails() {
+      const orderId = Number(document.getElementById('detailOrderId')?.value || state.selectedOrderId || 0);
+      if (!orderId) return showNotice('Bạn chưa chọn Order ID.', false);
+      try {
+        const details = await apiFetch(`/OrderDetail/order/${orderId}`);
+        document.getElementById('orderDetailsList').innerHTML = details.length ? renderTable(['Detail ID','Món','SL'], details.map(x => [x.detailId, x.product?.name || x.productId, x.quantity])) : 'Đơn này chưa có món nào.';
+      } catch (err) { showNotice(err.message, false); }
+    }
+
+    async function createOrderDetail() {
+      try {
+        const payload = {
+          orderId: Number(document.getElementById('detailOrderId').value),
+          productId: Number(document.getElementById('detailProductId').value),
+          quantity: Number(document.getElementById('detailQuantity').value)
+        };
+        await apiFetch('/OrderDetail', { method: 'POST', body: JSON.stringify(payload) });
+        showNotice('Đã thêm món vào đơn hàng.');
+        await loadOrderDetails();
+      } catch (err) { showNotice(err.message, false); }
+    }
+
+    async function createBill() {
+      try {
+        const payload = {
+          orderId: Number(document.getElementById('billOrderId').value),
+          totalAmount: Number(document.getElementById('billTotalAmount').value),
+          discount: Number(document.getElementById('billDiscount').value)
+        };
+        await apiFetch('/Bill', { method: 'POST', body: JSON.stringify(payload) });
+        await loadDashboard();
+        switchTab('bills');
+      } catch (err) { showNotice(err.message, false); }
+    }
+
+    async function login() {
+      try {
+        const payload = { username: document.getElementById('loginUsername').value, password: document.getElementById('loginPassword').value };
+        const res = await apiFetch('/Auth/login', { method: 'POST', body: JSON.stringify(payload) });
+        state.token = res.token || '';
+        state.user = { username: res.username, role: res.role };
+        localStorage.setItem('coffee_token', state.token);
+        localStorage.setItem('coffee_user', JSON.stringify(state.user));
+        updateStats();
+        showNotice('Đăng nhập thành công.');
+        renderActive();
+      } catch (err) { showNotice(err.message, false); }
+    }
+
+    async function registerUser() {
+      try {
+        const payload = { username: document.getElementById('loginUsername').value, password: document.getElementById('loginPassword').value, role: document.getElementById('registerRole').value };
+        await apiFetch('/Auth/register', { method: 'POST', body: JSON.stringify(payload) });
+        showNotice('Đăng ký thành công. Bạn có thể đăng nhập ngay.');
+      } catch (err) { showNotice(err.message, false); }
+    }
+
+    function logout() {
+      state.token = '';
+      state.user = null;
+      localStorage.removeItem('coffee_token');
+      localStorage.removeItem('coffee_user');
+      updateStats();
+      renderActive();
+      showNotice('Đã đăng xuất.');
+    }
+
+    renderTabs();
+    updateStats();
+    renderActive();
+  </script>
+</body>
+</html>
