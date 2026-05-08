@@ -1,13 +1,17 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { api, formatApiError, getFirst, normalizeListPayload } from "../api/client";
 
+function formatMoney(v) {
+  return Number(v || 0).toLocaleString("vi-VN") + " đ";
+}
+
 function StatusBadge({ status }) {
   if (!status) return <span className="pill">—</span>;
   const s = String(status).toLowerCase();
-  if (s === "pending") return <span className="pill pill-pending">Pending</span>;
-  if (s === "paid") return <span className="pill pill-paid">Paid</span>;
-  if (s === "done" || s === "completed") return <span className="pill pill-ok">Done</span>;
-  if (s === "cancelled") return <span className="pill pill-busy">Cancelled</span>;
+  if (s === "pending") return <span className="pill pill-pending">Đang chờ</span>;
+  if (s === "paid") return <span className="pill pill-paid">Đã thanh toán</span>;
+  if (s === "done" || s === "completed") return <span className="pill pill-ok">Hoàn thành</span>;
+  if (s === "cancelled") return <span className="pill pill-busy">Đã hủy</span>;
   return <span className="pill pill-neutral">{status}</span>;
 }
 
@@ -20,7 +24,7 @@ export default function OrdersPage() {
 
   // Form
   const [formTableId, setFormTableId] = useState("");
-  const [formStatus, setFormStatus] = useState("Pending");
+  const [formStatus, setFormStatus] = useState("Đang chờ");
   const [saving, setSaving] = useState(false);
 
   function showNotice(msg, ok = true) {
@@ -30,8 +34,8 @@ export default function OrdersPage() {
 
   const metrics = useMemo(() => {
     const total = orders.length;
-    const pending = orders.filter((o) => String(o.status || "").toLowerCase() === "pending").length;
-    const done = orders.filter((o) => ["done", "paid", "completed"].includes(String(o.status || "").toLowerCase())).length;
+    const pending = orders.filter((o) => String(o.status || o.Status || "").toLowerCase() === "đang phục vụ").length;
+    const done = orders.filter((o) => ["đã thanh toán", "đã hủy", "paid", "done", "cancelled"].includes(String(o.status || o.Status || "").toLowerCase())).length;
     return { total, pending, done };
   }, [orders]);
 
@@ -64,7 +68,7 @@ export default function OrdersPage() {
       });
       showNotice("Tạo đơn hàng thành công!");
       setFormTableId("");
-      setFormStatus("Pending");
+      setFormStatus("Đang chờ");
       await fetchOrders();
     } catch (e) {
       showNotice("Lỗi tạo đơn: " + formatApiError(e), false);
@@ -96,7 +100,7 @@ export default function OrdersPage() {
         <div>
           <h1 className="page-title">Đơn hàng</h1>
           <div className="page-subtitle">
-            Tổng {metrics.total} đơn · {metrics.pending} Pending · {metrics.done} Done
+            Tổng {metrics.total} đơn · {metrics.pending} Đang chờ · {metrics.done} Hoàn thành
           </div>
         </div>
         <div className="page-actions">
@@ -126,26 +130,49 @@ export default function OrdersPage() {
                 <thead>
                   <tr>
                     <th style={{ width: 60 }}>ID</th>
-                    <th style={{ width: 120 }}>Bàn</th>
-                    <th style={{ width: 160 }}>Thời gian</th>
-                    <th style={{ width: 120 }}>Trạng thái</th>
-                    <th style={{ width: 100 }}>Thao tác</th>
+                    <th style={{ width: 90 }}>Bàn</th>
+                    <th style={{ textAlign: "right" }}>Tổng tiền</th>
+                    <th style={{ width: 100 }}>Bill</th>
+                    <th style={{ width: 130 }}>Thời gian</th>
+                    <th style={{ width: 100 }}>Trạng thái</th>
+                    <th style={{ width: 70 }}>Thao tác</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {orders.map((o) => (
-                    <tr key={o.orderId}>
-                      <td style={{ fontWeight: 800 }}>#{o.orderId ?? "—"}</td>
-                      <td>{o.table ? o.table.name : (o.tableId ?? "—")}</td>
+                  {orders.map((o) => {
+                    const tableName = o.tableName || o.TableName || o.table?.name || "";
+                    const displayTable = tableName || (o.tableId || o.TableId ? "Bàn " + (o.tableId || o.TableId) : "—");
+                    const orderDetails = o.orderDetails || o.OrderDetails || [];
+                    const total = orderDetails.reduce((sum, d) => {
+                      const price = d.productPrice || d.ProductPrice || d.product?.price || 0;
+                      return sum + (d.quantity || d.Quantity || 1) * price;
+                    }, 0);
+                    const isPaid = String(o.status || o.Status || "").toLowerCase() === "đã thanh toán";
+                    const bill = o.bill || o.Bill;
+                    const hasBill = bill && (bill.billId || bill.BillId);
+                    return (
+                    <tr key={o.orderId || o.OrderId}>
+                      <td style={{ fontWeight: 800 }}>#{o.orderId || o.OrderId || "—"}</td>
+                      <td>{displayTable}</td>
+                      <td style={{ textAlign: "right", fontWeight: 800, color: isPaid ? "var(--ok)" : "var(--warn)" }}>
+                        {total > 0 ? formatMoney(total) : "—"}
+                      </td>
+                      <td>
+                        {hasBill
+                          ? <span style={{ color: "var(--ok)", fontWeight: 600 }}>✓ #{bill.billId || bill.BillId}</span>
+                          : <span style={{ color: "#999", fontStyle: "italic" }}>Chưa có</span>
+                        }
+                      </td>
                       <td style={{ fontSize: 12, color: "var(--muted)" }}>{formatDate(o.createdAt)}</td>
-                      <td><StatusBadge status={o.status} /></td>
+                      <td><StatusBadge status={o.status || o.Status} /></td>
                       <td className="actions">
-                        <button className="btn btn-danger" style={{ padding: "7px 10px" }} onClick={() => deleteOrder(o.orderId)}>Xóa</button>
+                        <button className="btn btn-danger" style={{ padding: "7px 10px" }} onClick={() => deleteOrder(o.orderId || o.OrderId)}>Xóa</button>
                       </td>
                     </tr>
-                  ))}
+                  );
+                  })}
                   {orders.length === 0 && (
-                    <tr><td colSpan={5}><div className="empty">Chưa có đơn hàng nào.</div></td></tr>
+                    <tr><td colSpan={7}><div className="empty">Chưa có đơn hàng nào.</div></td></tr>
                   )}
                 </tbody>
               </table>
@@ -172,8 +199,15 @@ export default function OrdersPage() {
                     onChange={(e) => setFormTableId(e.target.value)}
                   >
                     <option value="">— Chọn bàn —</option>
-                    {tables.map((t) => (
-                      <option key={t.tableId} value={t.tableId}>{t.name} ({t.status})</option>
+                    {tables
+                      .filter(t => {
+                        const s = String(t.status || t.Status || "").toLowerCase();
+                        return s === "trống" || s === "available";
+                      })
+                      .map((t) => (
+                        <option key={t.tableId || t.TableId} value={t.tableId || t.TableId}>
+                          {t.name || t.Name} ({t.status || t.Status})
+                        </option>
                     ))}
                   </select>
                 </div>
@@ -184,10 +218,8 @@ export default function OrdersPage() {
                     value={formStatus}
                     onChange={(e) => setFormStatus(e.target.value)}
                   >
-                    <option>Pending</option>
-                    <option>Paid</option>
-                    <option>Done</option>
-                    <option>Cancelled</option>
+                    <option value="Đang phục vụ">Đang phục vụ</option>
+                    <option value="Đang chờ">Đang chờ</option>
                   </select>
                 </div>
               </div>

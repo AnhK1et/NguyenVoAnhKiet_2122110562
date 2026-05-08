@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { QRCodeSVG } from "qrcode.react";
 import { API_BASE, api, formatApiError, getFirst, normalizeListPayload } from "../api/client";
 
 function formatMoney(v) {
@@ -20,6 +21,7 @@ export default function TablesPage() {
   const [tables, setTables] = useState([]);
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
+  const [allOrders, setAllOrders] = useState([]);
   const [selectedTable, setSelectedTable] = useState(null);
   const [viewMode, setViewMode] = useState("order");
   const [orderDetails, setOrderDetails] = useState([]);
@@ -58,10 +60,16 @@ export default function TablesPage() {
     setLoading(true);
     setError("");
     try {
-      const [resTables, resProducts, resCategories] = await Promise.allSettled([
+      // Dọn dẹp đơn rỗng và bàn trống
+      try {
+        await api.post("/Order/cleanup");
+      } catch { /* ignore cleanup errors */ }
+
+      const [resTables, resProducts, resCategories, resOrders] = await Promise.allSettled([
         getFirst(["/Table", "/table"]),
         getFirst(["/Product", "/product"]),
         getFirst(["/Category", "/category"]),
+        getFirst(["/Order", "/order"]),
       ]);
       
       let tableList = [];
@@ -81,6 +89,13 @@ export default function TablesPage() {
         catList = normalizeListPayload(resCategories.value.data);
       }
       setCategories(catList);
+
+      // Load orders để hiển thị món và giá trên mỗi bàn
+      if (resOrders.status === "fulfilled" && resOrders.value?.data) {
+        const allOrders = normalizeListPayload(resOrders.value.data);
+        // Backend đã trả OrderDetails và Bill đầy đủ, không cần enrich thêm
+        setAllOrders(allOrders);
+      }
       
       if (resTables.status === "rejected") {
         setError("Không tải được danh sách bàn. " + formatApiError(resTables.reason));
@@ -113,7 +128,10 @@ export default function TablesPage() {
           Quantity: 1
         });
         showNotice(`Đã thêm "${product.name}" cho ${selectedTable.name}`);
+        // Chuyển sang chế độ xem để có thể thêm món
+        setViewMode("view");
         await fetchData();
+        await viewOrderDetails(selectedTable);
       } else {
         showNotice(res.data.message || "Lỗi tạo đơn", false);
       }
@@ -128,39 +146,98 @@ export default function TablesPage() {
   // 2. XEM CHI TIẾT ĐƠN
   // =============================================
   async function viewOrderDetails(table) {
+    console.log("=== viewOrderDetails called ===");
+    console.log("Table:", table);
+    console.log("allOrders:", allOrders);
     try {
-      const res = await getFirst(["/Order", "/order"]);
-      const allOrders = normalizeListPayload(res.value.data);
-      
-      const myOrders = allOrders.filter((o) => String(o.tableId) === String(table.tableId) && o.status === "Đang phục vụ");
-      
-      if (myOrders.length === 0) {
-        setTableOrders([]);
-        setOrderDetails([]);
-        setCurrentOrder(null);
-        setCurrentBill(null);
-        return;
+      // Ưu tiên lấy từ state allOrders đã được enrich
+      const stateOrder = allOrders.find(o => {
+        const orderStatus = o.status || o.Status || "";
+        const tableIdMatch = String(o.tableId || o.TableId) === String(table.tableId || table.TableId);
+        console.log(`Checking order: tableId=${o.tableId || o.TableId}, status=${orderStatus}`);
+        return tableIdMatch && orderStatus === "Đang phục vụ";
+      });
+
+      console.log("Found stateOrder:", stateOrder);
+
+      let order;
+      let details = [];
+
+      if (stateOrder && (stateOrder.OrderDetails || stateOrder.orderDetails)) {
+        console.log("Using stateOrder details");
+        order = stateOrder;
+        details = stateOrder.OrderDetails || stateOrder.orderDetails;
+      } else {
+        console.log("Fetching from API...");
+        // Gọi API lấy đơn hàng
+        let ordersData = [];
+        try {
+          const resOrders = await api.get("/Order");
+          console.log("/Order response:", resOrders.data);
+          ordersData = normalizeListPayload(resOrders.data);
+        } catch (e1) {
+          console.log("Get /Order failed:", e1.message);
+          ordersData = [];
+        }
+
+        console.log("All orders from API:", ordersData);
+
+        const myOrders = ordersData.filter((o) => {
+          const orderStatus = o.status || o.Status || "";
+          return String(o.tableId || o.TableId) === String(table.tableId || table.TableId) && orderStatus === "Đang phục vụ";
+        });
+
+        console.log("Filtered orders for table:", myOrders);
+
+        if (myOrders.length === 0) {
+          setTableOrders([]);
+          setOrderDetails([]);
+          setCurrentOrder(null);
+          setCurrentBill(null);
+          return;
+        }
+
+        order = myOrders[0];
+        console.log("Selected order:", order);
+        
+        // Lấy chi tiết đơn hàng
+        const orderId = order.orderId || order.OrderId;
+        console.log("Fetching details for orderId:", orderId);
+        try {
+          const resDetails = await api.get(`/OrderDetail/order/${orderId}`);
+          console.log("/OrderDetail/order/ full response:", resDetails);
+          console.log("/OrderDetail/order/ data:", resDetails.data);
+          details = normalizeListPayload(resDetails.data);
+        } catch (e3) {
+          console.log("Get details failed:", e3.message);
+          details = order.OrderDetails || order.orderDetails || [];
+        }
       }
-
-      const order = myOrders[0];
+      
+      console.log("Final details:", details);
       setCurrentOrder(order);
-      setTableOrders(myOrders);
+      setTableOrders([order]);
 
-      // Lấy chi tiết từ OrderDetails
-      const details = order.OrderDetails || order.orderDetails || [];
-      const validDetails = details.filter(d => d.status !== "Đã hủy");
+      // Xử lý details
+      const validDetails = (details || []).filter(d => {
+        const detailStatus = d.status || d.Status || "";
+        return detailStatus !== "Đã hủy";
+      });
+      
+      console.log("Valid details:", validDetails);
       
       setOrderDetails(validDetails.map(d => ({
         ...d,
-        productName: d.product?.name || "?",
-        productPrice: d.product?.price || 0
+        detailId: d.detailId || d.DetailId,
+        productName: d.product?.name || d.Product?.Name || d.productName || "?",
+        productPrice: d.product?.price || d.Product?.Price || d.productPrice || 0
       })));
 
       // Lấy Bill
-      if (order.bill) {
-        setCurrentBill(order.bill);
-      } else if (order.Bill) {
-        setCurrentBill(order.Bill);
+      if (order.bill || order.Bill) {
+        setCurrentBill(order.bill || order.Bill);
+      } else {
+        setCurrentBill(null);
       }
     } catch (e) {
       console.error("Lỗi viewOrderDetails:", e);
@@ -179,9 +256,14 @@ export default function TablesPage() {
       showNotice("Không có đơn hàng đang mở", false);
       return;
     }
+    const orderId = currentOrder.orderId || currentOrder.OrderId;
+    if (!orderId) {
+      showNotice("Không tìm thấy ID đơn hàng", false);
+      return;
+    }
     setLoading(true);
     try {
-      await api.post(`/Order/${currentOrder.orderId}/details`, {
+      await api.post(`/Order/${orderId}/details`, {
         ProductId: product.productId,
         Quantity: 1
       });
@@ -197,12 +279,16 @@ export default function TablesPage() {
   // =============================================
   // 4. XÓA MÓN
   // =============================================
+  // 4. XÓA MÓN
+  // =============================================
   async function removeItem(detailId) {
     if (!currentOrder) return;
+    const orderId = currentOrder.orderId || currentOrder.OrderId;
+    if (!orderId) return;
     if (!window.confirm("Xóa món này khỏi đơn?")) return;
     
     try {
-      await api.delete(`/Order/${currentOrder.orderId}/details/${detailId}`);
+      await api.delete(`/Order/${orderId}/details/${detailId}`);
       showNotice("Đã xóa món");
       await viewOrderDetails(selectedTable);
     } catch (e) {
@@ -222,6 +308,7 @@ export default function TablesPage() {
       showNotice(res.data.message || "Đã chuyển bàn thành công");
       setShowTransferModal(false);
       setSelectedTable(null);
+      setViewMode("order");
       await fetchData();
     } catch (e) {
       showNotice("Lỗi chuyển bàn: " + formatApiError(e), false);
@@ -240,6 +327,7 @@ export default function TablesPage() {
       showNotice(res.data.message || "Đã gộp bàn thành công");
       setShowMergeModal(false);
       setSelectedTable(null);
+      setViewMode("order");
       await fetchData();
     } catch (e) {
       showNotice("Lỗi gộp bàn: " + formatApiError(e), false);
@@ -264,6 +352,7 @@ export default function TablesPage() {
       setShowSplitModal(false);
       setSelectedSplitItems([]);
       setSelectedTable(null);
+      setViewMode("order");
       await fetchData();
     } catch (e) {
       showNotice("Lỗi tách bàn: " + formatApiError(e), false);
@@ -275,10 +364,23 @@ export default function TablesPage() {
   // =============================================
   async function handleRequestPayment() {
     if (!currentOrder) return;
+    const orderId = currentOrder.orderId || currentOrder.OrderId;
+    if (!orderId) return;
     try {
-      await api.post(`/Order/${currentOrder.orderId}/request-payment`);
+      // Tạo bill trước nếu chưa có
+      let bill = currentOrder.bill || currentOrder.Bill;
+      if (!bill) {
+        const billRes = await api.post("/Bill", { OrderId: orderId, Discount: 0 });
+        bill = billRes.data;
+      }
+      await api.post(`/Order/${orderId}/request-payment`);
       showNotice("Đã chuyển sang chờ thanh toán");
       setShowPaymentModal(true);
+      setCurrentBill(bill);
+      // Reload bill để lấy thông tin mới nhất
+      const billRefresh = await api.get(`/Bill/${bill.billId || bill.BillId}`);
+      setCurrentBill(billRefresh.data);
+      setDiscount(billRefresh.data.discount || 0);
       await fetchData();
     } catch (e) {
       showNotice("Lỗi: " + formatApiError(e), false);
@@ -289,11 +391,25 @@ export default function TablesPage() {
   // 9. ÁP DỤNG GIẢM GIÁ
   // =============================================
   async function applyDiscount() {
-    if (!currentBill) return;
+    if (!currentBill) {
+      showNotice("Chưa có hóa đơn. Nhấn 'Tính tiền' trước.", false);
+      return;
+    }
+    const billId = currentBill.billId || currentBill.BillId;
+    if (!billId) {
+      showNotice("Không tìm thấy ID hóa đơn", false);
+      return;
+    }
+    if (discount < 0) {
+      showNotice("Giảm giá không được âm", false);
+      return;
+    }
     try {
-      await api.put(`/Bill/${currentBill.billId}/discount`, { Discount: discount });
+      const res = await api.put(`/Bill/${billId}/discount`, { Discount: discount });
       showNotice("Đã áp dụng giảm giá");
-      await viewOrderDetails(selectedTable);
+      // Reload bill
+      const billRes = await api.get(`/Bill/${billId}`);
+      setCurrentBill(billRes.data);
     } catch (e) {
       showNotice("Lỗi: " + formatApiError(e), false);
     }
@@ -304,6 +420,8 @@ export default function TablesPage() {
   // =============================================
   async function handlePayment(amountPaid) {
     if (!currentBill) return;
+    const billId = currentBill.billId || currentBill.BillId;
+    if (!billId) return;
     
     const finalAmount = (currentBill.totalAmount || currentBill.TotalAmount || 0) - discount;
     
@@ -313,7 +431,7 @@ export default function TablesPage() {
     }
 
     try {
-      const res = await api.post(`/Bill/${currentBill.billId}/pay`, {
+      const res = await api.post(`/Bill/${billId}/pay`, {
         AmountPaid: amountPaid,
         PaymentMethod: paymentMethod
       });
@@ -323,6 +441,7 @@ export default function TablesPage() {
       setCurrentOrder(null);
       setCurrentBill(null);
       setOrderDetails([]);
+      setViewMode("order");
       await fetchData();
     } catch (e) {
       showNotice("Lỗi thanh toán: " + formatApiError(e), false);
@@ -334,15 +453,18 @@ export default function TablesPage() {
   // =============================================
   async function handleCancelOrder() {
     if (!currentOrder) return;
+    const orderId = currentOrder.orderId || currentOrder.OrderId;
+    if (!orderId) return;
     const reason = window.prompt("Lý do hủy đơn:");
     if (!reason) return;
     
     try {
-      await api.post(`/Order/${currentOrder.orderId}/cancel`, { Reason: reason });
+      await api.post(`/Order/${orderId}/cancel`, { Reason: reason });
       showNotice("Đã hủy đơn");
       setSelectedTable(null);
       setCurrentOrder(null);
       setOrderDetails([]);
+      setViewMode("order");
       await fetchData();
     } catch (e) {
       showNotice("Lỗi hủy đơn: " + formatApiError(e), false);
@@ -359,11 +481,20 @@ export default function TablesPage() {
     if (mode === "view") viewOrderDetails(table);
   }
 
-  const totalAmount = orderDetails.reduce((sum, d) => sum + (d.quantity || 1) * d.productPrice, 0);
+  const totalAmount = orderDetails.reduce((sum, d) => {
+    const price = d.productPrice || d.Product?.Price || d.product?.price || 0;
+    return sum + (d.quantity || d.Quantity || 1) * price;
+  }, 0);
   const finalAmount = totalAmount - discount;
 
-  const availableTables = tables.filter(t => String(t.status || "").toLowerCase() === "trống" && t.tableId !== selectedTable?.tableId);
-  const occupiedTables = tables.filter(t => String(t.status || "").toLowerCase() === "đang phục vụ");
+  const availableTables = tables.filter(t => {
+    const tableStatus = t.status || t.Status || "";
+    return tableStatus === "Trống" && t.tableId !== selectedTable?.tableId;
+  });
+      const occupiedTables = tables.filter(t => {
+        const tableStatus = t.status || t.Status || "";
+        return tableStatus === "Đang phục vụ";
+      });
 
   return (
     <div className="page">
@@ -415,8 +546,18 @@ export default function TablesPage() {
       ) : (
         <div className="tables-grid">
           {tables.map((t) => {
-            const s = String(t.status || "").toLowerCase();
-            const isAvailable = s === "trống";
+            const tableStatus = t.status || t.Status || "";
+            const isAvailable = tableStatus === "Trống";
+            const tableOrder = allOrders.find(o => {
+              const orderStatus = o.status || o.Status || "";
+              return String(o.tableId || o.TableId) === String(t.tableId || t.TableId) && (orderStatus === "Đang phục vụ" || orderStatus === "pending");
+            });
+            const orderItems = tableOrder ? (tableOrder.OrderDetails || tableOrder.orderDetails || []) : [];
+            const totalAmount = orderItems.reduce((sum, item) => {
+              const price = item.productPrice || item.Product?.Price || item.product?.price || 0;
+              return sum + (item.quantity || item.Quantity || 1) * price;
+            }, 0);
+            
             return (
               <div
                 key={t.tableId}
@@ -427,6 +568,26 @@ export default function TablesPage() {
               >
                 <div className="table-card-name">{t.name}</div>
                 <StatusBadge status={t.status} />
+                
+                {/* Hiển thị món và giá tiền */}
+                {!isAvailable && orderItems.length > 0 && (
+                  <div style={{ marginTop: 8, fontSize: 12 }}>
+                    {orderItems.slice(0, 2).map((item, idx) => (
+                      <div key={idx} style={{ color: "#ccc", marginBottom: 2 }}>
+                        • {item.Product?.Name || item.Product?.name || item.productName || "Món"} x{item.quantity || item.Quantity || 1}
+                      </div>
+                    ))}
+                    {orderItems.length > 2 && (
+                      <div style={{ color: "#888" }}>+{orderItems.length - 2} món khác</div>
+                    )}
+                    {totalAmount > 0 && (
+                      <div style={{ marginTop: 6, fontWeight: 700, color: "#4caf50", fontSize: 14 }}>
+                        {formatMoney(totalAmount)}
+                      </div>
+                    )}
+                  </div>
+                )}
+                
                 <div className="table-card-meta" style={{ marginTop: 6 }}>
                   ID: #{t.tableId}
                 </div>
@@ -759,6 +920,37 @@ export default function TablesPage() {
                   <option value="Ví điện tử">Ví điện tử</option>
                 </select>
               </div>
+
+              {/* QR Code cho chuyển khoản */}
+              {paymentMethod === "Chuyển khoản" && (
+                <div style={{ marginBottom: 16, padding: 16, background: "#fff", borderRadius: 8, textAlign: "center", border: "1px solid #ddd" }}>
+                  <div style={{ fontWeight: 600, marginBottom: 8 }}>Quét mã QR để thanh toán</div>
+                  <div style={{ display: "flex", justifyContent: "center", marginBottom: 8 }}>
+                    <QRCodeSVG value={`vietqr://9703/9302092004/${finalAmount}/Thanh toan ban`} size={220} />
+                  </div>
+                  <div style={{ fontSize: 13, color: "#333", marginTop: 12 }}>
+                    <strong>Ngân hàng:</strong> Techcombank<br />
+                    <strong>STK:</strong> 9302092004<br />
+                    <strong>Tên:</strong> Nguyen Vo Anh Kiet<br />
+                    <strong>Số tiền:</strong> {formatMoney(finalAmount)}
+                  </div>
+                </div>
+              )}
+
+              {/* QR Code cho ví điện tử */}
+              {paymentMethod === "Ví điện tử" && (
+                <div style={{ marginBottom: 16, padding: 16, background: "#fff", borderRadius: 8, textAlign: "center", border: "1px solid #ddd" }}>
+                  <div style={{ fontWeight: 600, marginBottom: 8 }}>Quét mã QR MoMo để thanh toán</div>
+                  <div style={{ display: "flex", justifyContent: "center", marginBottom: 8 }}>
+                    <QRCodeSVG value={`vietqr://9703/9302092004/${finalAmount}/Thanh toan ban`} size={220} />
+                  </div>
+                  <div style={{ fontSize: 13, color: "#333", marginTop: 12 }}>
+                    <strong>Ví MoMo:</strong> 9302092004<br />
+                    <strong>Tên:</strong> Nguyen Vo Anh Kiet<br />
+                    <strong>Số tiền:</strong> {formatMoney(finalAmount)}
+                  </div>
+                </div>
+              )}
 
               <button
                 className="btn btn-ok"

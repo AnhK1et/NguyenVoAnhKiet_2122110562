@@ -45,9 +45,11 @@ export default function OrderDetailsPage() {
   async function loadDetails() {
     if (!selectedOrderId) return showNotice("Vui lòng chọn Order ID.", false);
     try {
-      const res = await api.get(`/OrderDetail/order/${selectedOrderId}`);
-      setDetails(normalizeListPayload(res.data ?? res));
-      showNotice(`Đã tải ${normalizeListPayload(res.data ?? res).length} chi tiết cho Order #${selectedOrderId}`);
+      const orderId = Number(selectedOrderId);
+      const res = await api.get(`/OrderDetail/order/${orderId}`);
+      const detailsData = normalizeListPayload(res.data ?? res);
+      setDetails(detailsData);
+      showNotice(`Đã tải ${detailsData.length} chi tiết cho Order #${orderId}`);
     } catch (e) {
       setDetails([]);
       showNotice("Lỗi tải chi tiết: " + formatApiError(e), false);
@@ -116,15 +118,18 @@ export default function OrderDetailsPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {details.map((d, i) => (
+                  {details.map((d, i) => {
+                    const productName = d.product?.name || d.product?.Name || d.productName || d.ProductName || "Món #" + d.productId;
+                    return (
                     <tr key={d.detailId ?? i}>
                       <td>#{d.detailId ?? "—"}</td>
-                      <td style={{ fontWeight: 700 }}>{d.product?.name || d.productId || "—"}</td>
+                      <td style={{ fontWeight: 700 }}>{productName}</td>
                       <td style={{ textAlign: "right", fontWeight: 800 }}>{d.quantity ?? 1}</td>
                     </tr>
-                  ))}
+                  );
+                  })}
                   {details.length === 0 && (
-                    <tr><td colSpan={3}><div className="empty">Chưa có món nào. Tạo đơn ở tab Đơn hàng trước.</div></td></tr>
+                    <tr><td colSpan={3}><div className="empty">Chưa có món nào. Chọn Order đang phục vụ và thêm món.</div></td></tr>
                   )}
                 </tbody>
               </table>
@@ -150,11 +155,19 @@ export default function OrderDetailsPage() {
                   onChange={(e) => { setSelectedOrderId(e.target.value); setDetails([]); }}
                 >
                   <option value="">— Chọn Order —</option>
-                  {orders.map((o) => (
-                    <option key={o.orderId} value={o.orderId}>
-                      #{o.orderId} · {o.table?.name || "Bàn " + o.tableId} · {o.status}
-                    </option>
-                  ))}
+                  {orders
+                    .filter(o => {
+                      const s = String(o.status || o.Status || "").toLowerCase();
+                      return s === "đang phục vụ" || s === "đang chờ";
+                    })
+                    .map((o) => {
+                      const tableName = o.tableName || o.TableName || o.table?.name || "Bàn " + (o.tableId || o.TableId);
+                      return (
+                        <option key={o.orderId || o.OrderId} value={o.orderId || o.OrderId}>
+                          #{o.orderId || o.OrderId} · {tableName} · {o.status || o.Status}
+                        </option>
+                      );
+                    })}
                 </select>
               </div>
 

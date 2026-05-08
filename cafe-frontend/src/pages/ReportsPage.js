@@ -46,10 +46,17 @@ export default function ReportsPage() {
       const s = String(t.status || "").toLowerCase();
       return s !== "available" && s !== "trống";
     }).length;
+    
+    // Chỉ tính bills đã thanh toán
+    const paidBills = bills.filter((b) => {
+      const s = String(b.status || "").toLowerCase();
+      return s === "đã thanh toán" || s === "paid";
+    });
+    
     const pendingOrders = orders.filter((o) => String(o.status || "").toLowerCase() === "pending").length;
-    const revenue = bills.reduce((sum, b) => sum + Number(b.totalAmount || 0), 0);
-    const discount = bills.reduce((sum, b) => sum + Number(b.discount || 0), 0);
-    return { totalTables, busyTables, pendingOrders, revenue, discount, menuItems: products.length, orderCount: orders.length };
+    const revenue = paidBills.reduce((sum, b) => sum + Number(b.totalAmount || b.TotalAmount || 0), 0);
+    const discount = paidBills.reduce((sum, b) => sum + Number(b.discount || b.Discount || 0), 0);
+    return { totalTables, busyTables, pendingOrders, revenue, discount, menuItems: products.length, orderCount: orders.length, paidBillCount: paidBills.length };
   }, [tables, products, orders, bills]);
 
   return (
@@ -85,6 +92,10 @@ export default function ReportsPage() {
             <div className="stat">
               <div className="label">Đơn hàng</div>
               <div className="value">{stats.orderCount}</div>
+            </div>
+            <div className="stat">
+              <div className="label">Đơn đã TT</div>
+              <div className="value" style={{ color: "#81c784" }}>{stats.paidBillCount}</div>
             </div>
             <div className="stat">
               <div className="label">Bàn đang dùng</div>
@@ -136,7 +147,7 @@ export default function ReportsPage() {
           <div className="stat-value" style={{ color: "var(--warn)" }}>{stats.busyTables}</div>
         </div>
         <div className="stat-item">
-          <div className="stat-label">Đơn Pending</div>
+          <div className="stat-label">Đơn đang chờ</div>
           <div className="stat-value" style={{ color: "#f57f17" }}>{stats.pendingOrders}</div>
         </div>
         <div className="stat-item">

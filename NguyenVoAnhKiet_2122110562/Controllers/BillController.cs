@@ -27,7 +27,30 @@ namespace NguyenVoAnhKiet_2122110562.Controllers
                     .ThenInclude(o => o!.OrderDetails)
                         .ThenInclude(od => od.Product)
                 .ToListAsync();
-            return Ok(bills);
+            
+            var result = bills.Select(b => new {
+                b.BillId,
+                b.OrderId,
+                OrderStatus = b.Order != null ? b.Order.Status : null,
+                TableName = b.Order?.Table != null ? b.Order.Table.Name : null,
+                b.Status,
+                b.TotalAmount,
+                b.Discount,
+                b.PaymentMethod,
+                b.AmountPaid,
+                b.ChangeAmount,
+                b.PaymentDate,
+                OrderDetails = b.Order?.OrderDetails?.Select(d => new {
+                    d.DetailId,
+                    d.ProductId,
+                    ProductName = d.Product != null ? d.Product.Name : null,
+                    ProductPrice = d.Product != null ? d.Product.Price : 0,
+                    d.Quantity,
+                    d.Status
+                }).ToList()
+            }).ToList();
+            
+            return Ok(result);
         }
 
         // GET: api/bill/5
@@ -43,7 +66,113 @@ namespace NguyenVoAnhKiet_2122110562.Controllers
                 .FirstOrDefaultAsync(b => b.BillId == id);
 
             if (bill == null) return NotFound();
-            return Ok(bill);
+            
+            var result = new {
+                bill.BillId,
+                bill.OrderId,
+                OrderStatus = bill.Order != null ? bill.Order.Status : null,
+                TableName = bill.Order?.Table != null ? bill.Order.Table.Name : null,
+                bill.Status,
+                bill.TotalAmount,
+                bill.Discount,
+                bill.PaymentMethod,
+                bill.AmountPaid,
+                bill.ChangeAmount,
+                bill.PaymentDate,
+                OrderDetails = bill.Order?.OrderDetails?.Select(d => new {
+                    d.DetailId,
+                    d.ProductId,
+                    ProductName = d.Product != null ? d.Product.Name : null,
+                    ProductPrice = d.Product != null ? d.Product.Price : 0,
+                    d.Quantity,
+                    d.Status
+                }).ToList()
+            };
+            
+            return Ok(result);
+        }
+
+        // POST: api/bill - Tạo hóa đơn mới
+        [HttpPost]
+        public async Task<IActionResult> Create([FromBody] CreateBillRequest request)
+        {
+            if (request.OrderId <= 0)
+                return BadRequest("OrderId không hợp lệ");
+
+            // Kiểm tra đã có bill chưa
+            var existingBill = await _context.Bills
+                .FirstOrDefaultAsync(b => b.OrderId == request.OrderId);
+
+            if (existingBill != null)
+            {
+                return Ok(new
+                {
+                    billId = existingBill.BillId,
+                    orderId = existingBill.OrderId,
+                    totalAmount = existingBill.TotalAmount,
+                    discount = existingBill.Discount,
+                    finalAmount = existingBill.TotalAmount - existingBill.Discount,
+                    status = existingBill.Status,
+                    message = "Hóa đơn đã tồn tại"
+                });
+            }
+
+            var order = await _context.Orders
+                .Include(o => o.OrderDetails)
+                    .ThenInclude(od => od.Product)
+                .Include(o => o.Table)
+                .FirstOrDefaultAsync(o => o.OrderId == request.OrderId);
+
+            if (order == null)
+                return NotFound("Order không tồn tại");
+
+            // Kiểm tra order đang phục vụ
+            if (order.Status == "Đã thanh toán")
+                return BadRequest("Đơn hàng đã được thanh toán trước đó");
+
+            // Kiểm tra có món chưa
+            if (order.OrderDetails == null || !order.OrderDetails.Any())
+                return BadRequest("Đơn hàng chưa có món. Vui lòng thêm món trước khi lập hóa đơn.");
+
+            // Tính tổng tiền
+            var totalAmount = order.OrderDetails
+                .Sum(od => od.Quantity * (od.Product?.Price ?? 0));
+
+            var bill = new Bill
+            {
+                OrderId = request.OrderId,
+                TotalAmount = totalAmount,
+                Discount = request.Discount,
+                Status = "Đã thanh toán",
+                PaymentMethod = request.Discount > 0 ? "Tiền mặt" : "Tiền mặt",
+                AmountPaid = totalAmount - request.Discount,
+                PaymentDate = DateTime.Now
+            };
+
+            // Cập nhật Order thành Đã thanh toán
+            order.Status = "Đã thanh toán";
+            
+            // Cập nhật bàn về Trống
+            if (order.Table != null)
+            {
+                order.Table.Status = "Trống";
+            }
+
+            _context.Bills.Add(bill);
+            await _context.SaveChangesAsync();
+
+            return Ok(new
+            {
+                billId = bill.BillId,
+                orderId = bill.OrderId,
+                totalAmount = bill.TotalAmount,
+                discount = bill.Discount,
+                finalAmount = bill.TotalAmount - bill.Discount,
+                status = bill.Status,
+                amountPaid = bill.AmountPaid,
+                tableName = order.Table?.Name,
+                message = "Lập hóa đơn và thanh toán thành công!"
+            });
         }
 
         // GET: api/bill/order/5
@@ -59,7 +188,30 @@ namespace NguyenVoAnhKiet_2122110562.Controllers
                 .FirstOrDefaultAsync(b => b.OrderId == orderId);
 
             if (bill == null) return NotFound();
-            return Ok(bill);
+            
+            var result = new {
+                bill.BillId,
+                bill.OrderId,
+                OrderStatus = bill.Order != null ? bill.Order.Status : null,
+                TableName = bill.Order?.Table != null ? bill.Order.Table.Name : null,
+                bill.Status,
+                bill.TotalAmount,
+                bill.Discount,
+                bill.PaymentMethod,
+                bill.AmountPaid,
+                bill.ChangeAmount,
+                bill.PaymentDate,
+                OrderDetails = bill.Order?.OrderDetails?.Select(d => new {
+                    d.DetailId,
+                    d.ProductId,
+                    ProductName = d.Product != null ? d.Product.Name : null,
+                    ProductPrice = d.Product != null ? d.Product.Price : 0,
+                    d.Quantity,
+                    d.Status
+                }).ToList()
+            };
+            
+            return Ok(result);
         }
 
         // =============================================
@@ -244,5 +396,11 @@ namespace NguyenVoAnhKiet_2122110562.Controllers
     {
         public decimal AmountPaid { get; set; }
         public string PaymentMethod { get; set; } = "Tiền mặt";
+    }
+
+    public class CreateBillRequest
+    {
+        public int OrderId { get; set; }
+        public decimal Discount { get; set; } = 0;
     }
 }

@@ -1,4 +1,5 @@
 ﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace NguyenVoAnhKiet_2122110562.Models
 {
@@ -20,9 +21,11 @@ namespace NguyenVoAnhKiet_2122110562.Models
         public string PaymentMethod { get; set; } = "";
         
         // Tiền khách trả
+        [Column(TypeName = "decimal(18,2)")]
         public decimal AmountPaid { get; set; }
         
         // Tiền thối lại (nếu trả dư)
+        [Column(TypeName = "decimal(18,2)")]
         public decimal ChangeAmount { get; set; }
         
         public DateTime PaymentDate { get; set; } = DateTime.Now;

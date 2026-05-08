@@ -54,11 +54,20 @@ export function formatApiError(e) {
 }
 
 export function normalizeListPayload(payload) {
+  // Direct array
   if (Array.isArray(payload)) return payload;
+  // Nested in common wrapper keys
   if (Array.isArray(payload?.data)) return payload.data;
   if (Array.isArray(payload?.items)) return payload.items;
   if (Array.isArray(payload?.results)) return payload.results;
   if (Array.isArray(payload?.value)) return payload.value;
+  // Plain object with numeric keys (e.g. { "0": {...}, "1": {...} })
+  if (payload && typeof payload === "object" && !Array.isArray(payload)) {
+    const keys = Object.keys(payload);
+    if (keys.length > 0 && keys.every(k => !isNaN(Number(k)))) {
+      return keys.sort((a, b) => Number(a) - Number(b)).map(k => payload[k]);
+    }
+  }
   return [];
 }
 

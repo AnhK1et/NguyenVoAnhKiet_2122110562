@@ -27,7 +27,38 @@ namespace NguyenVoAnhKiet_2122110562.Controllers
                 .Include(o => o.Bill)
                 .ToListAsync();
             
-            return Ok(orders);
+            var result = orders.Select(o => new {
+                o.OrderId,
+                o.TableId,
+                TableName = o.Table != null ? o.Table.Name : null,
+                TableStatus = o.Table != null ? o.Table.Status : null,
+                o.Status,
+                o.CreatedAt,
+                o.CancelNote,
+                OrderDetails = o.OrderDetails?.Select(d => new {
+                    d.DetailId,
+                    d.OrderId,
+                    d.ProductId,
+                    ProductName = d.Product != null ? d.Product.Name : null,
+                    ProductPrice = d.Product != null ? d.Product.Price : 0,
+                    d.Quantity,
+                    d.Status,
+                    d.CancelNote
+                }).ToList(),
+                Bill = o.Bill != null ? new {
+                    o.Bill.BillId,
+                    o.Bill.OrderId,
+                    o.Bill.Status,
+                    o.Bill.TotalAmount,
+                    o.Bill.Discount,
+                    o.Bill.PaymentMethod,
+                    o.Bill.AmountPaid,
+                    o.Bill.ChangeAmount,
+                    o.Bill.PaymentDate
+                } : null
+            }).ToList();
+            
+            return Ok(result);
         }
 
         // GET: api/order/5
@@ -42,7 +73,39 @@ namespace NguyenVoAnhKiet_2122110562.Controllers
                 .FirstOrDefaultAsync(o => o.OrderId == id);
 
             if (order == null) return NotFound();
-            return Ok(order);
+            
+            var result = new {
+                order.OrderId,
+                order.TableId,
+                TableName = order.Table != null ? order.Table.Name : null,
+                TableStatus = order.Table != null ? order.Table.Status : null,
+                order.Status,
+                order.CreatedAt,
+                order.CancelNote,
+                OrderDetails = order.OrderDetails?.Select(d => new {
+                    d.DetailId,
+                    d.OrderId,
+                    d.ProductId,
+                    ProductName = d.Product != null ? d.Product.Name : null,
+                    ProductPrice = d.Product != null ? d.Product.Price : 0,
+                    d.Quantity,
+                    d.Status,
+                    d.CancelNote
+                }).ToList(),
+                Bill = order.Bill != null ? new {
+                    order.Bill.BillId,
+                    order.Bill.OrderId,
+                    order.Bill.Status,
+                    order.Bill.TotalAmount,
+                    order.Bill.Discount,
+                    order.Bill.PaymentMethod,
+                    order.Bill.AmountPaid,
+                    order.Bill.ChangeAmount,
+                    order.Bill.PaymentDate
+                } : null
+            };
+            
+            return Ok(result);
         }
 
         // =============================================
@@ -55,18 +118,6 @@ namespace NguyenVoAnhKiet_2122110562.Controllers
             var table = await _context.Tables.FindAsync(request.TableId);
             if (table == null)
                 return NotFound("Bàn không tồn tại");
-
-            // Kiểm tra bàn đã có đơn đang phục vụ chưa
-            var existingOrder = await _context.Orders
-                .Where(o => o.TableId == request.TableId && o.Status == "Đang phục vụ")
-                .FirstOrDefaultAsync();
-
-            if (existingOrder != null)
-                return BadRequest(new { message = "Bàn này đã có đơn đang phục vụ", orderId = existingOrder.OrderId });
-
-            // Kiểm tra bàn có đang trống không
-            if (table.Status != "Trống")
-                return BadRequest($"Bàn đang có trạng thái: {table.Status}. Không thể tạo đơn mới.");
 
             // Tạo đơn mới
             var order = new Order
@@ -314,6 +365,55 @@ namespace NguyenVoAnhKiet_2122110562.Controllers
             _context.Orders.Remove(order);
             await _context.SaveChangesAsync();
             return Ok();
+        }
+
+        // =============================================
+        // DỌN DẸP ĐƠN RỖNG VÀ BÀN TRỐNG
+        // =============================================
+        [HttpPost("cleanup")]
+        public async Task<IActionResult> Cleanup()
+        {
+            // Tìm các đơn không có món và đang ở trạng thái tạo mới (chưa có món)
+            var emptyOrders = await _context.Orders
+                .Include(o => o.OrderDetails)
+                .Include(o => o.Bill)
+                .Where(o => !o.OrderDetails.Any() && o.Status == "Đang phục vụ")
+                .ToListAsync();
+
+            foreach (var order in emptyOrders)
+            {
+                // Xóa Bill nếu có
+                if (order.Bill != null)
+                    _context.Bills.Remove(order.Bill);
+                
+                // Xóa đơn rỗng
+                _context.Orders.Remove(order);
+                
+                // Cập nhật bàn về Trống
+                if (order.Table != null)
+                    order.Table.Status = "Trống";
+            }
+
+            // Cập nhật tất cả bàn không có đơn đang phục vụ về Trống
+            var allTables = await _context.Tables.ToListAsync();
+            var activeOrders = await _context.Orders
+                .Where(o => o.Status == "Đang phục vụ" || o.Status == "Chờ thanh toán")
+                .Select(o => o.TableId)
+                .ToListAsync();
+
+            foreach (var table in allTables)
+            {
+                if (!activeOrders.Contains(table.TableId))
+                    table.Status = "Trống";
+            }
+
+            await _context.SaveChangesAsync();
+
+            return Ok(new { 
+                message = "Đã dọn dẹp thành công",
+                cleanedOrders = emptyOrders.Count,
+                updatedTables = allTables.Count(t => t.Status == "Trống")
+            });
         }
     }
 

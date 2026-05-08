@@ -62,10 +62,11 @@ export default function BillsPage() {
   }
 
   // Tính tổng tạm khi chọn order để preview
-  const selectedOrder = orders.find(o => o.orderId == formOrderId);
-  const previewTotal = selectedOrder?.orderDetails?.reduce((sum, od) => {
-    return sum + (od.quantity || 0) * (od.product?.price || 0);
-  }, 0) || 0;
+  const selectedOrder = orders.find(o => String(o.orderId || o.OrderId) === String(formOrderId));
+  const orderDetails = selectedOrder?.orderDetails || selectedOrder?.OrderDetails || [];
+  const previewTotal = orderDetails.reduce((sum, od) => {
+    return sum + (od.quantity || od.Quantity || 0) * (od.product?.price || od.Product?.Price || od.productPrice || 0);
+  }, 0);
   const previewFinal = previewTotal - (Number(formDiscount) || 0);
 
   function formatDate(d) {
@@ -74,8 +75,12 @@ export default function BillsPage() {
     catch { return d; }
   }
 
-  const totalRevenue = bills.reduce((sum, b) => sum + Number(b.totalAmount || 0), 0);
-  const totalDiscount = bills.reduce((sum, b) => sum + Number(b.discount || 0), 0);
+  const paidBills = bills.filter(b => {
+    const s = String(b.status || b.Status || "").toLowerCase();
+    return s === "đã thanh toán" || s === "paid";
+  });
+  const totalRevenue = paidBills.reduce((sum, b) => sum + Number(b.totalAmount || b.TotalAmount || 0), 0);
+  const totalDiscount = paidBills.reduce((sum, b) => sum + Number(b.discount || b.Discount || 0), 0);
 
   return (
     <div className="page">
@@ -134,23 +139,34 @@ export default function BillsPage() {
                   <tr>
                     <th style={{ width: 60 }}>Bill ID</th>
                     <th style={{ width: 80 }}>Order ID</th>
+                    <th style={{ width: 120 }}>Trạng thái</th>
                     <th style={{ textAlign: "right" }}>Tổng tiền</th>
                     <th style={{ textAlign: "right" }}>Giảm giá</th>
-                    <th style={{ width: 160 }}>Ngày thanh toán</th>
+                    <th style={{ textAlign: "right" }}>Thực thu</th>
+                    <th style={{ width: 150 }}>Ngày thanh toán</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {bills.map((b) => (
-                    <tr key={b.billId}>
-                      <td style={{ fontWeight: 800 }}>#{b.billId ?? "—"}</td>
-                      <td>#{b.orderId ?? "—"}</td>
-                      <td style={{ textAlign: "right", fontWeight: 800 }}>{formatMoney(b.totalAmount)}</td>
-                      <td style={{ textAlign: "right", color: "var(--warn)" }}>{formatMoney(b.discount)}</td>
+                  {bills.map((b) => {
+                    const billStatus = b.status || b.Status || "";
+                    const isPaid = String(billStatus).toLowerCase() === "đã thanh toán" || String(billStatus).toLowerCase() === "paid";
+                    const total = Number(b.totalAmount || b.TotalAmount || 0);
+                    const discount = Number(b.discount || b.Discount || 0);
+                    const actual = total - discount;
+                    return (
+                    <tr key={b.billId || b.BillId}>
+                      <td style={{ fontWeight: 800 }}>#{b.billId ?? b.BillId ?? "—"}</td>
+                      <td>#{b.orderId ?? b.OrderId ?? "—"}</td>
+                      <td><span className={`pill ${isPaid ? "pill-ok" : "pill-neutral"}`}>{billStatus || "—"}</span></td>
+                      <td style={{ textAlign: "right", fontWeight: 800 }}>{formatMoney(total)}</td>
+                      <td style={{ textAlign: "right", color: "var(--warn)" }}>{discount > 0 ? formatMoney(discount) : "—"}</td>
+                      <td style={{ textAlign: "right", fontWeight: 800, color: "var(--ok)" }}>{formatMoney(actual)}</td>
                       <td style={{ fontSize: 12, color: "var(--muted)" }}>{formatDate(b.paymentDate)}</td>
                     </tr>
-                  ))}
+                  );
+                  })}
                   {bills.length === 0 && (
-                    <tr><td colSpan={5}><div className="empty">Chưa có hóa đơn nào.</div></td></tr>
+                    <tr><td colSpan={7}><div className="empty">Chưa có hóa đơn nào.</div></td></tr>
                   )}
                 </tbody>
               </table>
@@ -176,11 +192,19 @@ export default function BillsPage() {
                   onChange={(e) => setFormOrderId(e.target.value)}
                 >
                   <option value="">— Chọn Order —</option>
-                  {orders.map((o) => (
-                    <option key={o.orderId} value={o.orderId}>
-                      #{o.orderId} · {o.table?.name || "Bàn " + o.tableId}
-                    </option>
-                  ))}
+                  {orders
+                    .filter(o => {
+                      const s = String(o.status || o.Status || "").toLowerCase();
+                      return s === "đang phục vụ" || s === "đang chờ";
+                    })
+                    .map((o) => {
+                      const tableName = o.tableName || o.TableName || "Bàn " + (o.tableId || o.TableId);
+                      return (
+                        <option key={o.orderId || o.OrderId} value={o.orderId || o.OrderId}>
+                          #{o.orderId || o.OrderId} · {tableName}
+                        </option>
+                      );
+                    })}
                 </select>
               </div>
               <div className="field">
@@ -193,6 +217,26 @@ export default function BillsPage() {
                   onChange={(e) => setFormDiscount(e.target.value)}
                 />
               </div>
+              
+              {/* Preview order items */}
+              {orderDetails.length > 0 && (
+                <div style={{ padding: 12, background: "#1a1a1a", borderRadius: 8, fontSize: 13 }}>
+                  <div style={{ fontWeight: 600, marginBottom: 8 }}>Chi tiết đơn hàng:</div>
+                  {orderDetails.map((od, i) => {
+                    const price = od.product?.price || od.Product?.Price || od.productPrice || 0;
+                    return (
+                      <div key={i} style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
+                        <span>{od.product?.name || od.Product?.Name || od.productName || "Món"} x{od.quantity || od.Quantity || 1}</span>
+                        <span>{formatMoney(price * (od.quantity || od.Quantity || 1))}</span>
+                      </div>
+                    );
+                  })}
+                  <div style={{ borderTop: "1px solid #333", marginTop: 8, paddingTop: 8, display: "flex", justifyContent: "space-between", fontWeight: 600 }}>
+                    <span>Tổng cộng:</span>
+                    <span style={{ color: "#81c784" }}>{formatMoney(previewTotal)}</span>
+                  </div>
+                </div>
+              )}
               <button className="btn btn-ok" onClick={createBill} disabled={saving}>
                 {saving ? "Đang tạo..." : "Lập hóa đơn"}
               </button>
