@@ -29,5 +29,9 @@ namespace NguyenVoAnhKiet_2122110562.Models
         public decimal ChangeAmount { get; set; }
         
         public DateTime PaymentDate { get; set; } = DateTime.Now;
+
+        // Người tạo bill
+        public int? CreatedBy { get; set; }
+        public string? CreatedByName { get; set; }
     }
 }

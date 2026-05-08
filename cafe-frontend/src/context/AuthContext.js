@@ -21,11 +21,10 @@ export function AuthProvider({ children }) {
 
   async function login(username, password) {
     const res = await api.post("/Auth/login", { Username: username, Password: password });
-    const { token, username: name, role } = res.data;
-    const userData = { username: name, role, token };
+    const { token, username: name, role, userId, fullName } = res.data;
+    const userData = { username: name, role, token, userId, fullName };
     setUser(userData);
     localStorage.setItem("nom_user", JSON.stringify(userData));
-    // Update api headers for all future requests
     api.defaults.headers.common["Authorization"] = `Bearer ${token}`;
     return userData;
   }

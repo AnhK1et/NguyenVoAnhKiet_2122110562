@@ -40,6 +40,8 @@ namespace NguyenVoAnhKiet_2122110562.Controllers
                 b.AmountPaid,
                 b.ChangeAmount,
                 b.PaymentDate,
+                b.CreatedBy,
+                b.CreatedByName,
                 OrderDetails = b.Order?.OrderDetails?.Select(d => new {
                     d.DetailId,
                     d.ProductId,
@@ -79,6 +81,8 @@ namespace NguyenVoAnhKiet_2122110562.Controllers
                 bill.AmountPaid,
                 bill.ChangeAmount,
                 bill.PaymentDate,
+                bill.CreatedBy,
+                bill.CreatedByName,
                 OrderDetails = bill.Order?.OrderDetails?.Select(d => new {
                     d.DetailId,
                     d.ProductId,
@@ -146,7 +150,9 @@ namespace NguyenVoAnhKiet_2122110562.Controllers
                 Status = "Đã thanh toán",
                 PaymentMethod = request.Discount > 0 ? "Tiền mặt" : "Tiền mặt",
                 AmountPaid = totalAmount - request.Discount,
-                PaymentDate = DateTime.Now
+                PaymentDate = DateTime.Now,
+                CreatedBy = request.UserId,
+                CreatedByName = request.UserName
             };
 
             // Cập nhật Order thành Đã thanh toán
@@ -171,6 +177,8 @@ namespace NguyenVoAnhKiet_2122110562.Controllers
                 status = bill.Status,
                 amountPaid = bill.AmountPaid,
                 tableName = order.Table?.Name,
+                createdBy = bill.CreatedBy,
+                createdByName = bill.CreatedByName,
                 message = "Lập hóa đơn và thanh toán thành công!"
             });
         }
@@ -201,6 +209,8 @@ namespace NguyenVoAnhKiet_2122110562.Controllers
                 bill.AmountPaid,
                 bill.ChangeAmount,
                 bill.PaymentDate,
+                bill.CreatedBy,
+                bill.CreatedByName,
                 OrderDetails = bill.Order?.OrderDetails?.Select(d => new {
                     d.DetailId,
                     d.ProductId,
@@ -402,5 +412,7 @@ namespace NguyenVoAnhKiet_2122110562.Controllers
     {
         public int OrderId { get; set; }
         public decimal Discount { get; set; } = 0;
+        public int? UserId { get; set; }
+        public string? UserName { get; set; }
     }
 }

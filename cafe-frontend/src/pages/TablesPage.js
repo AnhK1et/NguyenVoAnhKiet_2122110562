@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { QRCodeSVG } from "qrcode.react";
 import { API_BASE, api, formatApiError, getFirst, normalizeListPayload } from "../api/client";
+import { useAuth } from "../context/AuthContext";
 
 function formatMoney(v) {
   return Number(v || 0).toLocaleString("vi-VN") + " đ";
@@ -18,6 +19,7 @@ function StatusBadge({ status }) {
 }
 
 export default function TablesPage() {
+  const { user } = useAuth();
   const [tables, setTables] = useState([]);
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
@@ -370,7 +372,12 @@ export default function TablesPage() {
       // Tạo bill trước nếu chưa có
       let bill = currentOrder.bill || currentOrder.Bill;
       if (!bill) {
-        const billRes = await api.post("/Bill", { OrderId: orderId, Discount: 0 });
+        const billRes = await api.post("/Bill", { 
+          OrderId: orderId, 
+          Discount: 0,
+          UserId: user?.userId || null,
+          UserName: user?.fullName || user?.username || null
+        });
         bill = billRes.data;
       }
       await api.post(`/Order/${orderId}/request-payment`);

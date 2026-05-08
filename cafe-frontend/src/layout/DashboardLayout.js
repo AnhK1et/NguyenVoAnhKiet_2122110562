@@ -48,6 +48,7 @@ export default function DashboardLayout() {
           {isAdmin && (
             <>
               <SidebarLink to="/menu" icon="📜">Sản phẩm</SidebarLink>
+              <SidebarLink to="/users" icon="👥">Người dùng</SidebarLink>
               <SidebarLink to="/order-details" icon="🍽">Chi tiết đơn</SidebarLink>
               <SidebarLink to="/reports" icon="📊">Tổng quan</SidebarLink>
             </>
@@ -60,7 +61,7 @@ export default function DashboardLayout() {
 
         <div className="sidebar-footer">
           <div className="user-info">
-            <span className="user-name">{user?.username}</span>
+            <span className="user-name">{user?.fullName || user?.username}</span>
             <span className={`role-badge role-${user?.role?.toLowerCase()}`}>{user?.role}</span>
           </div>
           <button className="btn btn-logout" onClick={handleLogout}>

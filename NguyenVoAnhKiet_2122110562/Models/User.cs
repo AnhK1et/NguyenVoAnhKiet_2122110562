@@ -15,5 +15,7 @@ namespace NguyenVoAnhKiet_2122110562.Models
 
         [Required]
         public string Role { get; set; } // Admin / Staff
+
+        public string FullName { get; set; } = "";
     }
 }

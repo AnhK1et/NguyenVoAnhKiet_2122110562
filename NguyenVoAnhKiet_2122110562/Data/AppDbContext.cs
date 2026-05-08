@@ -93,7 +93,7 @@ namespace NguyenVoAnhKiet_2122110562.Data
             );
 
             modelBuilder.Entity<User>().HasData(
-                new User { UserId = 1, Username = "admin", Password = "123", Role = "Admin" }
+                new User { UserId = 1, Username = "admin", Password = "123", Role = "Admin", FullName = "Quản lý" }
             );
         }
     }
